@@ -9,7 +9,7 @@
 [![Models](https://img.shields.io/badge/Models-coming%20soon-orange)](#release-plan)
 [![License](https://img.shields.io/badge/License-coming%20soon-lightgrey)](#license)
 
-Official repository for **IterRF**, an iterative optimization-inspired framework for jointly improving multi-modal image registration and fusion.
+Official repository for **IterRF**, an iterative and interpretable mutual enhancement for jointly improving multi-modal image registration and fusion.
 
 </div>
 
