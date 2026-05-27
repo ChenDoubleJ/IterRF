@@ -10,7 +10,7 @@ Official repository for **IterRF**.
 
 **IterRF** is an iterative and interpretable mutual enhancement framework for joint multi-modal image registration and fusion.
 
-<img width="700" height="587" alt="image" src="https://github.com/user-attachments/assets/f59bf430-32dd-4fcd-a6fb-72b52c111e80" />
+<img width="600" height="487" alt="image" src="https://github.com/user-attachments/assets/f59bf430-32dd-4fcd-a6fb-72b52c111e80" />
 
 Unaligned multi-modal image fusion requires registration and fusion to be optimized together. Existing methods usually follow a cascaded **register-then-fuse** pipeline or use only single-step feedback between the two tasks, which can limit the mutual enhancement between alignment and fusion.
 
