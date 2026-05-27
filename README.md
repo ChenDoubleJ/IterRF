@@ -15,7 +15,7 @@ Official repository for **IterRF**, an iterative and interpretable mutual enhanc
 
 ---
 
-## Overview
+## 📌 Overview
 
 **IterRF** targets the challenging problem of **unaligned multi-modal image fusion**, where accurate spatial registration and high-quality image fusion must be optimized together rather than handled as isolated steps.
 
@@ -27,7 +27,7 @@ Existing approaches commonly rely on a cascaded **register-then-fuse** pipeline,
 
 IterRF formulates registration and fusion within a unified optimization framework and unfolds the optimization process into alternating registration-related and fusion-related subproblems. With iterative bidirectional refinement, the model progressively improves alignment accuracy and fusion quality.
 
-## Highlights
+## ✨ Highlights
 
 - **Joint registration and fusion**: optimizes spatial alignment and fused image generation in a unified framework.
 - **Iterative mutual enhancement**: alternates between registration-oriented and fusion-oriented refinement stages.
@@ -35,7 +35,7 @@ IterRF formulates registration and fusion within a unified optimization framewor
 - **Broad multi-modal applicability**: designed for infrared-visible and medical multi-modal image scenarios.
 - **Research-friendly release plan**: code, pretrained models, evaluation scripts, and visualization results will be released after paper acceptance.
 
-## Framework
+## 🧩 Framework
 
 <p align="center">
   <img width="100%" alt="IterRF framework" src="https://github.com/user-attachments/assets/dd3ac80c-1c0b-4e11-a241-ff690d9f6ddf" />
@@ -43,7 +43,7 @@ IterRF formulates registration and fusion within a unified optimization framewor
 
 The framework alternates between registration and fusion modules so that the two tasks can refine each other over multiple iterations. Registration benefits from progressively enhanced fused representations, while fusion benefits from increasingly reliable spatial correspondence.
 
-## Release Plan
+## 🗓️ Release Plan
 
 The full project will be released upon paper acceptance. Planned materials include:
 
@@ -54,31 +54,31 @@ The full project will be released upon paper acceptance. Planned materials inclu
 - [ ] Visualization tools and qualitative comparison results
 - [ ] Detailed usage instructions and reproducibility notes
 
-## Installation
+## 🛠️ Installation
 
 The installation guide will be provided together with the code release.
 
-## Testing
+## 🧪 Testing
 
 Testing and evaluation instructions will be added after the official implementation is released.
 
-## Training
+## 🚀 Training
 
 Training scripts, configuration files, and dataset preparation instructions will be released after paper acceptance.
 
-## Pretrained Models
+## 📦 Pretrained Models
 
 Pretrained checkpoints will be made available after the paper is accepted.
 
-## Results
+## 📈 Results
 
 Quantitative results, qualitative comparisons, and visualization examples will be added in the official release.
 
-## License
+## 📄 License
 
 The license will be announced before the public code release.
 
-## Citation
+## 📚 Citation
 
 If you find this work useful for your research, please consider citing our paper. The BibTeX entry will be updated after publication.
 
@@ -93,6 +93,6 @@ If you find this work useful for your research, please consider citing our paper
 ```
 -->
 
-## Contact
+## 📬 Contact
 
 For questions about IterRF, please open an issue in this repository.
