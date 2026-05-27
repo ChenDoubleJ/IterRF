@@ -4,6 +4,14 @@ Official repository for **IterRF**.
 
 > Code will be released upon paper acceptance.
 
+This repository will provide:
+
+- The official implementation of **IterRF**
+- Pretrained models
+- Testing and evaluation scripts
+- Training scripts
+- Visualization and comparison results
+
 ---
 
 ## 📌 Overview
@@ -15,14 +23,6 @@ Official repository for **IterRF**.
 **Existing Challenges**: Unaligned multi-modal image fusion requires registration and fusion to be optimized together. Existing methods usually follow a cascaded **register-then-fuse** pipeline or use only single-step feedback between the two tasks, which can limit the mutual enhancement between alignment and fusion.
 
 **Our Advantages**: IterRF formulates registration and fusion within a unified optimization framework and unfolds the optimization process into alternating registration-related and fusion-related subproblems. Through iterative bidirectional refinement, the framework progressively improves spatial alignment and fusion quality.
-
-This repository will provide:
-
-- The official implementation of **IterRF**
-- Pretrained models
-- Testing and evaluation scripts
-- Training scripts
-- Visualization and comparison results
 
 ---
 
