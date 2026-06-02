@@ -38,7 +38,7 @@ IterRF formulates registration and fusion within a unified optimization framewor
 ## 🧩 Framework
 
 <p align="center">
-  <img width="100%" alt="IterRF framework" src="https://github.com/user-attachments/assets/dd3ac80c-1c0b-4e11-a241-ff690d9f6ddf" />
+  <img width="2004" height="1178" alt="image" src="https://github.com/user-attachments/assets/61d8565f-fce4-44af-a676-abc135ccec12" />
 </p>
 
 The framework alternates between registration and fusion modules so that the two tasks can refine each other over multiple iterations. Registration benefits from progressively enhanced fused representations, while fusion benefits from increasingly reliable spatial correspondence.
