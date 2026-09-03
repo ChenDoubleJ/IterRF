@@ -2,9 +2,9 @@
 
 # IterRF
 
-### Iterative and Interpretable Mutual Enhancement for Joint Multi-Modal Image Registration and Fusion
+### Iterative and Interpretable Mutual Enhancement for Joint Multi-Modal Image Registration and Fusion (IJCV 2026)
 
-[![Paper](https://img.shields.io/badge/Paper-IJCV(CCF--A)%20revision-blue)](#citation)
+[![Paper](https://img.shields.io/badge/Paper-IJCV(CCF--A)%20Accept-blue)](#citation)
 [![Code](https://img.shields.io/badge/Code-coming%20soon-orange)](#release-plan)
 [![Models](https://img.shields.io/badge/Models-coming%20soon-orange)](#release-plan)
 [![License](https://img.shields.io/badge/License-coming%20soon-lightgrey)](#license)
