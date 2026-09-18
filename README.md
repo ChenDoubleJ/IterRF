@@ -74,6 +74,10 @@ Pretrained checkpoints will be made available after the paper is accepted.
 
 Quantitative results, qualitative comparisons, and visualization examples will be added in the official release.
 
+<img width="1991" height="726" alt="image" src="https://github.com/user-attachments/assets/cf3ced13-6e84-4b4f-b72e-58fcfbf5a392" />
+
+![Uploading image.png…]()
+
 ## 📄 License
 
 The license will be announced before the public code release.
