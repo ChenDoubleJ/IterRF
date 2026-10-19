@@ -1,169 +1,196 @@
-import os
 import argparse
-
-import torch.nn as nn
-import torch
-import torch.optim as optim
-import torch.optim.lr_scheduler as lr_scheduler
-from torch.utils.tensorboard import SummaryWriter
-
-from dataset import Registration_Train_Data, Registration_Test_Data
-from utils import data_transform, inverse_data_transform, create_lr_scheduler, train_one_epoch, evaluate
 import datetime
-# from model.fusion_net import Fusionnet
-# from model.fusionnet import FusionNet
-from model.fusionnet import FusionNet
-from model.registrationnet import RegistrationNet
-from model.DUN_net import DUNnet
-from model.alpha_beta_net import alpha_beta_net
-from model.registration_net import registration_net
-from model.encoder import AE_Encoder
+import os
+from pathlib import Path
+
+from checkpoint_utils import get_alpha_beta_state
+from project_config import TASKS, validate_existing_dir, validate_existing_file
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(description="Train IterRF on paired multi-modal images.")
+    parser.add_argument("--task", choices=TASKS, default="RoadScene")
+    parser.add_argument("--data-path-train", help="Training split containing ir/, vi/, warp_ir/, warp_vi/, disp/.")
+    parser.add_argument("--data-path-test", help="Validation split containing ir/, vi/, and warp_vi/.")
+    parser.add_argument("--weights", help="Optional model-only initialization checkpoint.")
+    parser.add_argument("--resume", help="Checkpoint used to resume model, optimizer, scheduler, and epoch.")
+    parser.add_argument("--output-dir", default="experiments")
+    parser.add_argument("--epochs", type=int, default=1500)
+    parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--eta1", type=float, default=0.1)
+    parser.add_argument("--eta2", type=float, default=0.1)
+    parser.add_argument("--stage", type=int, default=3)
+    parser.add_argument("--val-interval", type=int, default=1)
+    parser.add_argument("--save-interval", type=int, default=100)
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
+    parser.add_argument("--gpu-id", default="0", help="CUDA_VISIBLE_DEVICES value.")
+    parser.add_argument("--num-workers", type=int, default=None)
+    return parser
+
+
+def _load_model_state(checkpoint, fusionnet, registration, alpha_beta):
+    fusionnet.load_state_dict(checkpoint["fusionnet"])
+    registration.load_state_dict(checkpoint["registration"])
+    alpha_beta.load_state_dict(get_alpha_beta_state(checkpoint))
+
+
 def main(args):
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    # torch.backends.cudnn.enabled = False
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
-    if os.path.exists("./experiments") is False:
-        os.makedirs("./experiments")
+    import torch
+    import torch.optim as optim
+    from torch.utils.tensorboard import SummaryWriter
 
-    file_name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    filefold_path = "./experiments/Registration_and_Fusion_{}".format(file_name)
-    os.makedirs(filefold_path)
-    file_img_path = os.path.join(filefold_path, "img")
-    os.makedirs(file_img_path)
-    file_weights_path = os.path.join(filefold_path, "weights")
-    os.makedirs(file_weights_path)
-    file_log_path = os.path.join(filefold_path, "log")
-    os.makedirs(file_log_path)
+    from dataset import Registration_Test_Data, Registration_Train_Data
+    from model.DUN_net import DUNnet
+    from model.alpha_beta_net import alpha_beta_net
+    from model.fusionnet import FusionNet
+    from model.registration_net import registration_net
+    from utils import create_lr_scheduler, evaluate, train_one_epoch
 
-    tb_writer = SummaryWriter(log_dir=file_log_path)
+    task_root = Path("data") / args.task
+    train_path = Path(args.data_path_train) if args.data_path_train else task_root / "train"
+    test_path = Path(args.data_path_test) if args.data_path_test else task_root / "test"
+    validate_existing_dir(train_path, "Training dataset directory")
+    validate_existing_dir(test_path, "Validation dataset directory")
+    if args.weights:
+        validate_existing_file(Path(args.weights), "Initialization checkpoint")
+    if args.resume:
+        validate_existing_file(Path(args.resume), "Resume checkpoint")
+    if min(args.epochs, args.batch_size, args.stage, args.val_interval, args.save_interval) < 1:
+        raise ValueError("Epoch, batch, stage, validation, and save values must be positive")
 
-    best_psnr = 1e-5
-    best_ssim = 1e-5
-    start_epoch = 0
+    if args.device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("CUDA was requested but is not available. Use --device cpu or --device auto.")
+    device_name = "cuda" if args.device == "auto" and torch.cuda.is_available() else args.device
+    if args.device == "auto" and not torch.cuda.is_available():
+        device_name = "cpu"
+    device = torch.device(device_name)
 
-    train_dataset = Registration_Train_Data(data_path=args.data_path_train)
-    test_dataset = Registration_Test_Data(data_path=args.data_path_test)
+    run_name = datetime.datetime.now().strftime(f"{args.task}_%Y%m%d-%H%M%S")
+    run_dir = Path(args.output_dir) / run_name
+    image_dir = run_dir / "images"
+    weights_dir = run_dir / "weights"
+    log_dir = run_dir / "log"
+    for directory in (image_dir, weights_dir, log_dir):
+        directory.mkdir(parents=True, exist_ok=True)
+    writer = SummaryWriter(log_dir=str(log_dir))
 
-    batch_size = args.batch_size
-    nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 8])
-    print('Using {} dataloader workers every process'.format(nw))
+    train_dataset = Registration_Train_Data(train_path)
+    test_dataset = Registration_Test_Data(test_path)
+    workers = args.num_workers
+    if workers is None:
+        workers = min(os.cpu_count() or 1, args.batch_size if args.batch_size > 1 else 0, 8)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        pin_memory=device.type == "cuda",
+        num_workers=workers,
+    )
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=1,
+        shuffle=False,
+        pin_memory=device.type == "cuda",
+        num_workers=workers,
+    )
 
-    train_loader = torch.utils.data.DataLoader(train_dataset,
-                                                batch_size=batch_size,
-                                                shuffle=True,
-                                                pin_memory=True,
-                                                num_workers=nw)
-    test_loader = torch.utils.data.DataLoader(test_dataset,
-                                                batch_size=1,
-                                                shuffle=False,
-                                                pin_memory=True,
-                                                num_workers=nw)
-    # encoder = AE_Encoder().to(device)
-    # encoder.load_state_dict(torch.load('checkpoint/Encoder.pth'))
-    # encoder.eval()
-    # for p1 in encoder.parameters():
-    #     p1.requires_grad = False
-    encoder = None
     fusionnet = FusionNet(64).to(device)
     registration = registration_net().to(device)
-    # alpha = nn.Sigmoid(nn.parameter())
     alpha_beta = alpha_beta_net().to(device)
-    dunnet = DUNnet(args.eta1, args.eta2, fusionnet, registration, encoder, device)
-    pg = [p for p in list(fusionnet.parameters()) + list(registration.parameters()) + list(alpha_beta.parameters()) if p.requires_grad]
-    optimizer = optim.Adam(pg, lr=args.lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=5E-5)
-    lr_scheduler = create_lr_scheduler(optimizer, len(train_loader), args.epochs, warmup=True)
+    dunnet = DUNnet(args.eta1, args.eta2, fusionnet, registration, None, device)
+    parameters = [
+        parameter
+        for parameter in list(fusionnet.parameters())
+        + list(registration.parameters())
+        + list(alpha_beta.parameters())
+        if parameter.requires_grad
+    ]
+    optimizer = optim.Adam(parameters, lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=5e-5)
+    scheduler = create_lr_scheduler(optimizer, len(train_loader), args.epochs, warmup=True)
 
-    total_params = sum(p.numel() for p in list(fusionnet.parameters()) + list(registration.parameters()) + list(alpha_beta.parameters()))
-    print(f'Total number of parameters: {total_params}')
+    start_epoch = 0
+    best_psnr = float("-inf")
+    best_ssim = float("-inf")
+    if args.weights:
+        _load_model_state(torch.load(args.weights, map_location=device), fusionnet, registration, alpha_beta)
+    if args.resume:
+        checkpoint = torch.load(args.resume, map_location=device)
+        _load_model_state(checkpoint, fusionnet, registration, alpha_beta)
+        optimizer.load_state_dict(checkpoint["optimizer"])
+        scheduler.load_state_dict(checkpoint["lr_scheduler"])
+        start_epoch = checkpoint["epoch"] + 1
+        best_psnr = checkpoint.get("best_psnr", best_psnr)
+        best_ssim = checkpoint.get("best_ssim", best_ssim)
 
-    for epoch in range(start_epoch, args.epochs):
-        # train
-        # train_loss, train_loss_ssim, train_loss_max, \
-        # train_loss_color, train_loss_grad, train_loss_l1, train_loss_smooth, lr = train_one_epoch(fusionnet=fusionnet,
-        #                                                                 registration=registration,
-        #                                                                 alpha_beta = alpha_beta,
-        #                                                                 dunnet=dunnet,
-        #                                                                 optimizer=optimizer,
-        #                                                                 data_loader=train_loader,
-        #                                                                 lr_scheduler=lr_scheduler,
-        #                                                                 stage=args.stage,
-        #                                                                 device=device,
-        #                                                                 epoch=epoch)
-        total_loss, loss_ssim, loss_max, loss_reg_field, loss_grad, loss_reg_img, loss_border_re, loss_smoothness, loss_color, lr = train_one_epoch(fusionnet=fusionnet,
-                                    registration=registration,
-                                    alpha_beta = alpha_beta,
-                                    dunnet=dunnet,
-                                    encoder=encoder,
-                                    optimizer=optimizer,
-                                    data_loader=train_loader,
-                                    lr_scheduler=lr_scheduler,
-                                    stage=args.stage,
-                                    device=device,
-                                    epoch=epoch)
-        tb_writer.add_scalar("Train/total_loss", total_loss, epoch)
-        tb_writer.add_scalar("Train/loss_ssim", loss_ssim, epoch)
-        tb_writer.add_scalar("Train/loss_max", loss_max, epoch)
-        tb_writer.add_scalar("Train/loss_reg_field", loss_reg_field, epoch)
-        tb_writer.add_scalar("Train/loss_grad", loss_grad, epoch)
-        tb_writer.add_scalar("Train/loss_reg_img", loss_reg_img, epoch)
-        tb_writer.add_scalar("Train/loss_smoothness", loss_smoothness, epoch)
-        tb_writer.add_scalar("Train/loss_border_re", loss_border_re, epoch)
-        tb_writer.add_scalar("Train/loss_color", loss_color, epoch)
-        tb_writer.add_scalar("Train/train_lr", lr, epoch)
-        # validate
-        val_epoch = -1
-        if epoch == 0 or epoch % val_epoch == 0 or epoch == 999: 
-            psnr, ssim = evaluate(fusionnet=fusionnet,
+    def save_checkpoint(path, epoch):
+        torch.save(
+            {
+                "fusionnet": fusionnet.state_dict(),
+                "registration": registration.state_dict(),
+                "alpha_beta": alpha_beta.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "lr_scheduler": scheduler.state_dict(),
+                "epoch": epoch,
+                "best_psnr": best_psnr,
+                "best_ssim": best_ssim,
+                "args": vars(args),
+            },
+            path,
+        )
+
+    try:
+        for epoch in range(start_epoch, args.epochs):
+            values = train_one_epoch(
+                fusionnet=fusionnet,
+                registration=registration,
+                alpha_beta=alpha_beta,
+                dunnet=dunnet,
+                encoder=None,
+                optimizer=optimizer,
+                data_loader=train_loader,
+                lr_scheduler=scheduler,
+                stage=args.stage,
+                device=device,
+                epoch=epoch,
+            )
+            metric_names = (
+                "total_loss", "loss_ssim", "loss_max", "loss_reg_field", "loss_grad",
+                "loss_reg_img", "loss_border_re", "loss_smoothness", "loss_color", "lr",
+            )
+            for name, value in zip(metric_names, values):
+                writer.add_scalar(f"Train/{name}", value, epoch)
+
+            if epoch % args.val_interval == 0 or epoch == args.epochs - 1:
+                psnr, ssim = evaluate(
+                    fusionnet=fusionnet,
                     registration=registration,
-                     alpha_beta = alpha_beta,
+                    alpha_beta=alpha_beta,
                     dunnet=dunnet,
-                    encoder=encoder,
+                    encoder=None,
                     optimizer=optimizer,
                     data_loader=test_loader,
                     stage=args.stage,
                     device=device,
-                    epoch=epoch, lr_scheduler=lr_scheduler, filefold_path=file_img_path)
+                    epoch=epoch,
+                    lr_scheduler=scheduler,
+                    filefold_path=str(image_dir),
+                )
+                writer.add_scalar("Validation/psnr", psnr, epoch)
+                writer.add_scalar("Validation/ssim", ssim, epoch)
+                if psnr > best_psnr or ssim > best_ssim:
+                    best_psnr = max(best_psnr, psnr)
+                    best_ssim = max(best_ssim, ssim)
+                    save_checkpoint(weights_dir / "checkpoint_best.pth", epoch)
 
-        if psnr > best_psnr or ssim > best_ssim:
-            print(f'-----------{epoch}----------------')
-            best_psnr = psnr
-            best_ssim = ssim
-            save_file = {"fusionnet": fusionnet.state_dict(),
-                            "registration": registration.state_dict(),
-                            "alpha_beat": alpha_beta.state_dict(),
-                            "optimizer": optimizer.state_dict(),
-                            "lr_scheduler": lr_scheduler.state_dict(),
-                            "epoch": epoch,
-                            "args": args}
-            torch.save(save_file, file_weights_path + "/" + "checkpoint.pth")
-        if epoch % 100 == 0 or epoch == args.epochs -1:
-            save_file = {"fusionnet": fusionnet.state_dict(),
-                            "registration": registration.state_dict(),
-                            "alpha_beat": alpha_beta.state_dict(),
-                            "optimizer": optimizer.state_dict(),
-                            "lr_scheduler": lr_scheduler.state_dict(),
-                            "epoch": epoch,
-                            "args": args}
-            torch.save(save_file, file_weights_path + "/" + f"checkpoint_{epoch}.pth")
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--epochs', type=int, default=1500)
-    parser.add_argument('--batch_size', type=int, default=4)
-    parser.add_argument('--lr', type=float, default=0.0001)
-    parser.add_argument('--eta1', type=float, default=0.1)
-    parser.add_argument('--eta2', type=float, default=0.1)
-    parser.add_argument('--stage', type=float, default=3)
-    parser.add_argument('--data_path_train', type=str,
-                        default="data/RoadScene/train")
-    parser.add_argument('--data_path_test', type=str,
-                        default="data/RoadScene/test")
-    parser.add_argument('--weights', type=str, default='',
-                        help='initial weights path')
-    parser.add_argument('--resume', default='', help='resume from checkpoint')
-    parser.add_argument('--use_dp', default=False, help='use dp-multigpus')
-    parser.add_argument('--device', default='cuda', help='device id (i.e. 0 or 0,1 or cpu)')
-    parser.add_argument('--gpu_id', default='6', help='device id (i.e. 0, 1, 2 or 3)')
-    opt = parser.parse_args()
+            if epoch % args.save_interval == 0 or epoch == args.epochs - 1:
+                save_checkpoint(weights_dir / f"checkpoint_{epoch}.pth", epoch)
+    finally:
+        writer.close()
 
-    main(opt)
+
+if __name__ == "__main__":
+    main(build_parser().parse_args())
+
