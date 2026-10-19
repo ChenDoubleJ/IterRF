@@ -48,7 +48,7 @@ pip install -r requirements.txt
 
 ## Data Preparation
 
-Each image pair must use the same filename stem in every subdirectory. Images are loaded as RGB tensors; `.png`, `.jpg`, `.jpeg`, `.bmp`, `.tif`, and `.tiff` are supported. Training displacement fields use `.pt` or `.pth` files with shape `[2, H, W]` or `[H, W, 2]`.
+Each image pair must use the same filename stem in every subdirectory. Images are loaded as RGB tensors; `.png`, `.jpg`, `.jpeg`, `.bmp`, `.tif`, and `.tiff` are supported. 
 
 ```text
 data/
@@ -78,7 +78,6 @@ Download the four task checkpoints from [Baidu Netdisk](https://pan.baidu.com/s/
 | MRI-PET | `checkpoint/weight_mri_pet.pth` |
 | SPECT-MRI | `checkpoint/weight_spect_mri.pth` |
 
-Checkpoint files are intentionally ignored by Git because of their size.
 
 ## Testing
 
