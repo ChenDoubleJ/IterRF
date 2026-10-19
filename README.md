@@ -131,14 +131,6 @@ python train.py --task RoadScene --resume /path/to/checkpoint_100.pth
 
 Run `python train.py --help` to inspect epoch, batch-size, learning-rate, validation, and checkpoint options.
 
-## Results
-
-<img width="986" alt="IterRF result 1" src="https://github.com/user-attachments/assets/7dc1725e-8e37-4353-8755-7239bae38cf1" />
-
-<img width="1182" alt="IterRF result 2" src="https://github.com/user-attachments/assets/8ea5e9a8-9b19-4c8a-8f9e-596b9787412f" />
-
-<img width="1152" alt="IterRF result 3" src="https://github.com/user-attachments/assets/279700b7-60ed-4f68-9511-df32c419bdc9" />
-
 ## Citation
 
 If this work is useful in your research, please cite:
