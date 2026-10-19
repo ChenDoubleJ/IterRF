@@ -179,7 +179,7 @@ if __name__ == '__main__':
                         default="data/RoadScene/test")
     parser.add_argument('--data_path_test', type=str,
                         default="data/RoadScene/test")
-    parser.add_argument('--weights', type=str, default='/home/xuhan/jiajunchen/Reg_Fusion/Registration_Fusion/experiments/best/weights/checkpoint_1400.pth',
+    parser.add_argument('--weights', type=str, default='./checkpoint/weight_roadscene.pth',
                         help='test weights path')
     parser.add_argument('--resume', default='', help='resume from checkpoint')
     parser.add_argument('--use_dp', default=False, help='use dp-multigpus')
