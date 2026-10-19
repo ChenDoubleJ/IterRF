@@ -4,103 +4,159 @@
 
 ### Iterative and Interpretable Mutual Enhancement for Joint Multi-Modal Image Registration and Fusion
 
-[![Paper](https://img.shields.io/badge/Paper-IJCV(CCF--A)%20Accept-blue)](#citation)
-[![Code](https://img.shields.io/badge/Code-coming%20soon-orange)](#release-plan)
-[![Models](https://img.shields.io/badge/Models-coming%20soon-orange)](#release-plan)
-[![License](https://img.shields.io/badge/License-coming%20soon-lightgrey)](#license)
+[![Paper](https://img.shields.io/badge/Paper-IJCV(CCF--A)-blue)](#citation)
+[![Code](https://img.shields.io/badge/Code-released-brightgreen)](#testing)
+[![Models](https://img.shields.io/badge/Models-released-brightgreen)](#pretrained-models)
 
-Official repository for **IterRF**.
+Official implementation of **IterRF**.
 
 </div>
 
 ---
 
-## 📌 Overview
+## Overview
 
-**IterRF** targets the challenging problem of **unaligned multi-modal image fusion**, where accurate spatial registration and high-quality image fusion must be optimized together rather than handled as isolated steps.
+IterRF addresses unaligned multi-modal image fusion by optimizing spatial registration and image fusion in one interpretable, iterative framework. Registration benefits from progressively enhanced fused representations, while fusion benefits from increasingly reliable spatial correspondence.
 
 <p align="center">
   <img width="600" alt="IterRF overview" src="https://github.com/user-attachments/assets/f59bf430-32dd-4fcd-a6fb-72b52c111e80" />
 </p>
 
-Existing approaches commonly rely on a cascaded **register-then-fuse** pipeline, or introduce only limited one-step feedback between registration and fusion. These designs can restrict the mutual enhancement between spatial alignment and information integration.
+## Highlights
 
-IterRF formulates registration and fusion within a unified optimization framework and unfolds the optimization process into alternating registration-related and fusion-related subproblems. With iterative bidirectional refinement, the model progressively improves alignment accuracy and fusion quality.
+- Joint registration and fusion in a unified optimization framework.
+- Iterative bidirectional refinement between registration and fusion.
+- Optimization-inspired, interpretable network unfolding.
+- Support for infrared-visible and medical multi-modal images.
 
-## ✨ Highlights
-
-- **Joint registration and fusion**: optimizes spatial alignment and fused image generation in a unified framework.
-- **Iterative mutual enhancement**: alternates between registration-oriented and fusion-oriented refinement stages.
-- **Optimization-inspired design**: unfolds interpretable subproblems into a learnable end-to-end framework.
-- **Broad multi-modal applicability**: designed for infrared-visible and medical multi-modal image scenarios.
-- **Research-friendly release plan**: code, pretrained models, evaluation scripts, and visualization results will be released after paper acceptance.
-
-## 🧩 Framework
+## Framework
 
 <p align="center">
-  <img width="2004" height="1178" alt="image" src="https://github.com/user-attachments/assets/61d8565f-fce4-44af-a676-abc135ccec12" />
+  <img width="1000" alt="IterRF framework" src="https://github.com/user-attachments/assets/61d8565f-fce4-44af-a676-abc135ccec12" />
 </p>
 
-The framework alternates between registration and fusion modules so that the two tasks can refine each other over multiple iterations. Registration benefits from progressively enhanced fused representations, while fusion benefits from increasingly reliable spatial correspondence.
+## Installation
 
-## 🗓️ Release Plan
+The original experiments used Python 3.8, PyTorch 1.11.0, torchvision 0.12.0, and CUDA 11.5. Create an isolated environment and install the PyTorch build matching your machine first.
 
-The full project will be released upon paper acceptance. Planned materials include:
+```bash
+conda create -n iterrf python=3.8 -y
+conda activate iterrf
 
-- [ ] Source code for the official IterRF implementation
-- [ ] Pretrained model checkpoints
-- [ ] Testing and evaluation scripts
-- [ ] Training scripts and configuration files
-- [ ] Visualization tools and qualitative comparison results
-- [ ] Detailed usage instructions and reproducibility notes
+pip install -r requirements.txt
+```
 
-## 🛠️ Installation
+## Data Preparation
 
-The installation guide will be provided together with the code release.
+Each image pair must use the same filename stem in every subdirectory. Images are loaded as RGB tensors; `.png`, `.jpg`, `.jpeg`, `.bmp`, `.tif`, and `.tiff` are supported. Training displacement fields use `.pt` or `.pth` files with shape `[2, H, W]` or `[H, W, 2]`.
 
-## 🧪 Testing
+```text
+data/
+└── RoadScene/                 # or M3FD, MRI-PET, SPECT-MRI
+    ├── train/
+    │   ├── ir/
+    │   ├── vi/
+    │   ├── warp_ir/
+    │   ├── warp_vi/
+    │   └── disp/
+    └── test/
+        ├── ir/
+        ├── vi/
+        └── warp_vi/
+```
 
-Testing and evaluation instructions will be added after the official implementation is released.
+Custom locations can be passed through the command-line options below.
 
-## 🚀 Training
+## Pretrained Models
 
-Training scripts, configuration files, and dataset preparation instructions will be released after paper acceptance.
+Download the four task checkpoints from [Baidu Netdisk](https://pan.baidu.com/s/19YCLZSKtE3Q0HuKdI3HUDw) with extraction code `b5kn`, then place them in `checkpoint/` using these filenames:
 
-## 📦 Pretrained Models
+| Task | Checkpoint |
+| --- | --- |
+| RoadScene | `checkpoint/weight_roadscene.pth` |
+| M3FD | `checkpoint/weight_m3fd.pth` |
+| MRI-PET | `checkpoint/weight_mri_pet.pth` |
+| SPECT-MRI | `checkpoint/weight_spect_mri.pth` |
 
-Pretrained checkpoints will be made available after the paper is accepted.
+Checkpoint files are intentionally ignored by Git because of their size.
 
-## 📈 Results
+## Testing
 
-Quantitative results, qualitative comparisons, and visualization examples will be added in the official release.
+The task selects the default dataset and checkpoint paths. Results are written to `results/<task>/registered/` and `results/<task>/fused/`.
 
-<img width="986" height="1153" alt="image" src="https://github.com/user-attachments/assets/7dc1725e-8e37-4353-8755-7239bae38cf1" />
+```bash
+python test.py --task RoadScene
+python test.py --task M3FD
+python test.py --task MRI-PET
+python test.py --task SPECT-MRI
+```
 
-<img width="1182" height="1130" alt="image" src="https://github.com/user-attachments/assets/8ea5e9a8-9b19-4c8a-8f9e-596b9787412f" />
+Override paths when data or weights are stored elsewhere:
 
-<img width="1530" height="1101" alt="image" src="https://github.com/user-attachments/assets/7f94b323-1c4f-47a9-8a6f-6df5d9ba7056" />
+```bash
+python test.py \
+  --task RoadScene \
+  --data-path /path/to/RoadScene/test \
+  --weights /path/to/weight_roadscene.pth \
+  --output-dir /path/to/results \
+  --device cuda --gpu-id 0
+```
 
-<img width="1152" height="1055" alt="image" src="https://github.com/user-attachments/assets/279700b7-60ed-4f68-9511-df32c419bdc9" />
+Use `python test.py --help` for all options. CPU inference is supported with `--device cpu`, although it is substantially slower.
 
-## 📄 License
+## Training
 
-The license will be announced before the public code release.
+By default, training reads `data/<task>/train` and validates on `data/<task>/test`.
 
-## 📚 Citation
+```bash
+python train.py --task RoadScene --device cuda --gpu-id 0
+```
 
-If you find this work useful for your research, please consider citing our paper. The BibTeX entry will be updated after publication.
+Paths, initialization weights, and output location are configurable:
 
-<!--
+```bash
+python train.py \
+  --task RoadScene \
+  --data-path-train /path/to/RoadScene/train \
+  --data-path-test /path/to/RoadScene/test \
+  --weights /path/to/initial_checkpoint.pth \
+  --output-dir /path/to/experiments
+```
+
+Resume a complete training state with:
+
+```bash
+python train.py --task RoadScene --resume /path/to/checkpoint_100.pth
+```
+
+Run `python train.py --help` to inspect epoch, batch-size, learning-rate, validation, and checkpoint options.
+
+## Results
+
+<img width="986" alt="IterRF result 1" src="https://github.com/user-attachments/assets/7dc1725e-8e37-4353-8755-7239bae38cf1" />
+
+<img width="1182" alt="IterRF result 2" src="https://github.com/user-attachments/assets/8ea5e9a8-9b19-4c8a-8f9e-596b9787412f" />
+
+<img width="1152" alt="IterRF result 3" src="https://github.com/user-attachments/assets/279700b7-60ed-4f68-9511-df32c419bdc9" />
+
+## Citation
+
+If this work is useful in your research, please cite:
+
 ```bibtex
-@article{iterrf,
-  title   = {IterRF: Iterative and Interpretable Mutual Enhancement for Joint Multi-Modal Image Registration and Fusion},
-  author  = {Han Xu and Jiajun Chen and Xunpeng Yi and Peili Li and Jiayi Ma},
-  journal = {International Journal of Computer Vision},
-  year    = {2026}
+@article{xu2026iterrf,
+  title={IterRF: Iterative and Interpretable Mutual Enhancement for Joint Multi-Modal Image Registration and Fusion},
+  author={Xu, Han and Chen, Jiajun and Yi, Xunpeng and Li, Peili and Ma, Jiayi},
+  journal={International Journal of Computer Vision},
+  volume={134},
+  number={10},
+  pages={442},
+  year={2026},
+  publisher={Springer}
 }
 ```
--->
 
-## 📬 Contact
+## Contact
 
 For questions about IterRF, please open an issue in this repository.
+
